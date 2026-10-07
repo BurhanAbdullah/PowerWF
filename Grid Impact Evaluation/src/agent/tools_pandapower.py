@@ -230,28 +230,43 @@ def run_contingency_analysis(contingency_type: str = "N-1",
                 
                 try:
                     pp.runpp(contingency_net)
-                    
-                    # Check for violations
-                    violations = {
-                        'voltage_violations': contingency_net.res_bus[
-                            (contingency_net.res_bus.vm_pu < 0.95) | 
-                            (contingency_net.res_bus.vm_pu > 1.05)
-                        ].index.tolist(),
-                        'loading_violations': contingency_net.res_line[
-                            contingency_net.res_line.loading_percent > 100
+
+                    voltage_violations = contingency_net.res_bus[
+                        (contingency_net.res_bus.vm_pu < 0.95) |
+                        (contingency_net.res_bus.vm_pu > 1.05)
+                    ].index.tolist()
+
+                    loading_violations = contingency_net.res_line[
+                        contingency_net.res_line.loading_percent > 100
+                    ].index.tolist()
+
+                    transformer_loading_violations = []
+                    if not contingency_net.res_trafo.empty:
+                        transformer_loading_violations = contingency_net.res_trafo[
+                            contingency_net.res_trafo.loading_percent > 100
                         ].index.tolist()
-                    }
-                    
+
                     results.append({
                         'contingency': f"{element_type}_{idx}",
-                        'converged': contingency_net.converged,
-                        'violations': violations
+                        'converged': bool(contingency_net.converged),
+                        'status': 'converged',
+                        'violations': {
+                            'voltage_violations': voltage_violations,
+                            'loading_violations': loading_violations,
+                            'transformer_loading_violations': transformer_loading_violations
+                        }
                     })
-                    
+
                 except Exception as e:
                     results.append({
                         'contingency': f"{element_type}_{idx}",
                         'converged': False,
+                        'status': 'failed',
+                        'violations': {
+                            'voltage_violations': [],
+                            'loading_violations': [],
+                            'transformer_loading_violations': []
+                        },
                         'error': str(e)
                     })
         
