@@ -270,9 +270,32 @@ def run_contingency_analysis(contingency_type: str = "N-1",
                         'error': str(e)
                     })
         
+        tested = len(results)
+        failed = sum(1 for result in results if result.get("status") == "failed")
+        converged = tested - failed
+        violation_count = sum(
+            bool(
+                result["violations"]["voltage_violations"]
+                or result["violations"]["loading_violations"]
+                or result["violations"]["transformer_loading_violations"]
+            )
+            for result in results
+            if result.get("status") == "converged"
+        )
+
         return {
             "status": "success",
-            "message": "Contingency analysis completed",
+            "message": (
+                "Contingency analysis completed"
+                if failed == 0
+                else f"Contingency analysis completed with {failed} failed contingency runs"
+            ),
+            "summary": {
+                "tested": tested,
+                "converged": converged,
+                "failed": failed,
+                "converged_with_violations": violation_count,
+            },
             "results": results
         }
     except RuntimeError as re:
